@@ -105,6 +105,13 @@ class GroqAdapter:
             answers = {}
             for name, q in _QUESTIONS.items():
                 choice = parsed[name]["choice"]
+                if choice not in q["options"]:
+                    # The tool schema's enum doesn't guarantee compliance — a
+                    # model can still emit a value outside it. Treat that the
+                    # same as any other malformed response rather than let an
+                    # unrecognized choice silently fail every string
+                    # comparison downstream in the policy.
+                    raise ValueError(f"{name}: {choice!r} is not one of {q['options']}")
                 confidence = float(parsed[name]["confidence"])
                 answers[name] = ChoiceAnswer(
                     choice=choice,

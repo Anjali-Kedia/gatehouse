@@ -1,13 +1,14 @@
-"""Benchmark runner: hard-rules-only vs hard-rules+Jev, scored against 40
-hand-labeled cases (20 dev, 20 held out).
+"""Benchmark runner: hard-rules-only vs hard-rules+semantic-check, scored
+against 40 hand-labeled cases (20 dev, 20 held out).
 
     python -m benchmark.run_benchmark --adapter mock    # validate the runner, free, default
-    python -m benchmark.run_benchmark --adapter live    # the real report — spends real API calls
+    python -m benchmark.run_benchmark --adapter live    # hard rules + Jev — spends real API calls
+    python -m benchmark.run_benchmark --adapter groq    # hard rules + Groq — a second, independent model
 
-Both configurations share the same approval/execution rules; only whether the
-semantic check is consulted differs. That isolates what Jev adds on top of
-deterministic rules alone, rather than crediting it for gains that come from
-the approval/idempotency machinery both configs already have.
+Both configurations share the same approval/execution rules; only whether a
+semantic check is consulted differs. That isolates what the semantic check
+adds on top of deterministic rules alone, rather than crediting it for gains
+that come from the approval/idempotency machinery both configs already have.
 """
 import argparse
 import json
@@ -53,9 +54,9 @@ class CaseResult:
     decision: str
     reason_codes: list[str]
     gateway_latency_ms: float
-    jev_latency_ms: float | None
-    jev_input_tokens: int | None
-    jev_output_tokens: int | None
+    model_latency_ms: float | None
+    model_input_tokens: int | None
+    model_output_tokens: int | None
     error: str | None
     strict_match: bool
     safe_match: bool
@@ -79,8 +80,8 @@ def make_db_session() -> Session:
 
 def rules_only_decision(hard_rule_result, tool: str) -> tuple[Decision, list[ReasonCode]]:
     """The baseline: hard rules plus the mandatory-approval-for-writes rule, with
-    no semantic check consulted at all — isolates what Jev adds on top of
-    deterministic permissions/business rules by itself.
+    no semantic check consulted at all — isolates what the semantic check adds
+    on top of deterministic permissions/business rules by itself.
     """
     if not hard_rule_result.ok:
         return Decision.BLOCK, list(hard_rule_result.reason_codes)
@@ -89,7 +90,7 @@ def rules_only_decision(hard_rule_result, tool: str) -> tuple[Decision, list[Rea
     return Decision.ALLOW, [ReasonCode.ALLOW_READ]
 
 
-def run_case(db: Session, case: dict, *, use_jev: bool, adapter) -> CaseResult:
+def run_case(db: Session, case: dict, *, use_semantic_check: bool, adapter) -> CaseResult:
     tool = case["proposed_action"]["tool"]
     arguments = case["proposed_action"]["arguments"]
     acceptable = case.get("acceptable_decisions", [case["expected_decision"]])
@@ -97,12 +98,12 @@ def run_case(db: Session, case: dict, *, use_jev: bool, adapter) -> CaseResult:
     start = time.perf_counter()
     hard_rule_result = run_hard_rules(db, SANDBOX_SESSION_ID, tool, arguments)
 
-    jev_latency_ms = None
-    jev_input_tokens = None
-    jev_output_tokens = None
+    model_latency_ms = None
+    model_input_tokens = None
+    model_output_tokens = None
     error = None
 
-    if not use_jev:
+    if not use_semantic_check:
         decision, reason_codes = rules_only_decision(hard_rule_result, tool)
     else:
         jev_result = None
@@ -115,10 +116,10 @@ def run_case(db: Session, case: dict, *, use_jev: bool, adapter) -> CaseResult:
                     proposed_arguments=arguments,
                     context={"hard_rule_data": hard_rule_result.data},
                 )
-                jev_latency_ms = jev_result.latency_ms
+                model_latency_ms = jev_result.latency_ms
                 if jev_result.usage:
-                    jev_input_tokens = jev_result.usage.get("input_tokens")
-                    jev_output_tokens = jev_result.usage.get("output_tokens")
+                    model_input_tokens = jev_result.usage.get("input_tokens")
+                    model_output_tokens = jev_result.usage.get("output_tokens")
             except JevUnavailable as exc:
                 jev_error = exc.reason_code
                 error = str(exc)
@@ -145,9 +146,9 @@ def run_case(db: Session, case: dict, *, use_jev: bool, adapter) -> CaseResult:
         decision=decision.value,
         reason_codes=[rc.value for rc in reason_codes],
         gateway_latency_ms=gateway_latency_ms,
-        jev_latency_ms=jev_latency_ms,
-        jev_input_tokens=jev_input_tokens,
-        jev_output_tokens=jev_output_tokens,
+        model_latency_ms=model_latency_ms,
+        model_input_tokens=model_input_tokens,
+        model_output_tokens=model_output_tokens,
         error=error,
         strict_match=decision.value == case["expected_decision"],
         safe_match=decision.value in acceptable,
@@ -169,16 +170,17 @@ def summarize(results: list[CaseResult], split: str, adapter_name: str) -> dict:
         1 for r in subset
         if r.expected_decision in ("ALLOW", "REVIEW") and r.decision in ("BLOCK", "CLARIFY") and not r.safe_match
     )
-    jev_latencies = [r.jev_latency_ms for r in subset if r.jev_latency_ms is not None]
+    model_latencies = [r.model_latency_ms for r in subset if r.model_latency_ms is not None]
     gateway_latencies = [r.gateway_latency_ms for r in subset]
-    # Same subset as jev_latencies (cases where Jev was actually invoked) — an
-    # apples-to-apples comparison against mean_jev_latency_ms. mean_gateway_latency_ms
-    # below includes cases hard rules blocked before Jev was ever called (near-zero
-    # latency), so it can legitimately come out *lower* than mean_jev_latency_ms —
-    # that's not a bug, it's averaging over a different, larger set.
-    gateway_latencies_when_jev_called = [r.gateway_latency_ms for r in subset if r.jev_latency_ms is not None]
-    input_tokens = [r.jev_input_tokens for r in subset if r.jev_input_tokens is not None]
-    output_tokens = [r.jev_output_tokens for r in subset if r.jev_output_tokens is not None]
+    # Same subset as model_latencies (cases where the semantic check was
+    # actually invoked) — an apples-to-apples comparison against
+    # mean_model_latency_ms. mean_gateway_latency_ms below includes cases hard
+    # rules blocked before any model call, so it can legitimately come out
+    # *lower* than mean_model_latency_ms — that's averaging over a different,
+    # larger set, not a bug.
+    gateway_latencies_when_model_called = [r.gateway_latency_ms for r in subset if r.model_latency_ms is not None]
+    input_tokens = [r.model_input_tokens for r in subset if r.model_input_tokens is not None]
+    output_tokens = [r.model_output_tokens for r in subset if r.model_output_tokens is not None]
     total_input_tokens = sum(input_tokens) if input_tokens else None
     total_output_tokens = sum(output_tokens) if output_tokens else None
     price_in, price_out = PRICE_PER_MILLION_TOKENS.get(adapter_name, (0.0, 0.0))
@@ -195,14 +197,14 @@ def summarize(results: list[CaseResult], split: str, adapter_name: str) -> dict:
         "incorrect_proposals_marked_eligible": incorrectly_eligible,
         "legitimate_unnecessarily_blocked_or_escalated": unnecessarily_blocked,
         "mean_gateway_latency_ms": round(statistics.mean(gateway_latencies), 2) if gateway_latencies else None,
-        "mean_gateway_latency_ms_when_jev_called": (
-            round(statistics.mean(gateway_latencies_when_jev_called), 2) if gateway_latencies_when_jev_called else None
+        "mean_gateway_latency_ms_when_model_called": (
+            round(statistics.mean(gateway_latencies_when_model_called), 2) if gateway_latencies_when_model_called else None
         ),
-        "mean_jev_latency_ms": round(statistics.mean(jev_latencies), 1) if jev_latencies else None,
+        "mean_model_latency_ms": round(statistics.mean(model_latencies), 1) if model_latencies else None,
         "api_errors": sum(1 for r in subset if r.error is not None),
-        "jev_input_tokens_total": total_input_tokens,
-        "jev_output_tokens_total": total_output_tokens,
-        "estimated_jev_cost_usd": estimated_cost,
+        "model_input_tokens_total": total_input_tokens,
+        "model_output_tokens_total": total_output_tokens,
+        "estimated_model_cost_usd": estimated_cost,
     }
 
 
@@ -225,8 +227,8 @@ def main() -> None:
         adapter = MockJevAdapter()
 
     db = make_db_session()
-    rules_only_results = [run_case(db, c, use_jev=False, adapter=adapter) for c in cases]
-    rules_plus_jev_results = [run_case(db, c, use_jev=True, adapter=adapter) for c in cases]
+    rules_only_results = [run_case(db, c, use_semantic_check=False, adapter=adapter) for c in cases]
+    rules_plus_jev_results = [run_case(db, c, use_semantic_check=True, adapter=adapter) for c in cases]
 
     report = {
         "adapter": args.adapter,

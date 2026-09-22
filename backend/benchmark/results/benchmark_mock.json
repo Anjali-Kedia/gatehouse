@@ -1,6 +1,6 @@
 {
   "adapter": "mock",
-  "generated_at": "2026-09-22T08:57:37.085590+00:00",
+  "generated_at": "2026-09-22T10:27:32.253302+00:00",
   "clarify_confidence": 0.6,
   "block_confidence": 0.75,
   "configurations": {
@@ -12,13 +12,13 @@
         "safe_agreement": 0.75,
         "incorrect_proposals_marked_eligible": 5,
         "legitimate_unnecessarily_blocked_or_escalated": 0,
-        "mean_gateway_latency_ms": 0.53,
-        "mean_gateway_latency_ms_when_jev_called": null,
-        "mean_jev_latency_ms": null,
+        "mean_gateway_latency_ms": 0.57,
+        "mean_gateway_latency_ms_when_model_called": null,
+        "mean_model_latency_ms": null,
         "api_errors": 0,
-        "jev_input_tokens_total": null,
-        "jev_output_tokens_total": null,
-        "estimated_jev_cost_usd": null
+        "model_input_tokens_total": null,
+        "model_output_tokens_total": null,
+        "estimated_model_cost_usd": null
       },
       "holdout": {
         "split": "holdout",
@@ -27,13 +27,13 @@
         "safe_agreement": 0.85,
         "incorrect_proposals_marked_eligible": 3,
         "legitimate_unnecessarily_blocked_or_escalated": 0,
-        "mean_gateway_latency_ms": 0.19,
-        "mean_gateway_latency_ms_when_jev_called": null,
-        "mean_jev_latency_ms": null,
+        "mean_gateway_latency_ms": 0.2,
+        "mean_gateway_latency_ms_when_model_called": null,
+        "mean_model_latency_ms": null,
         "api_errors": 0,
-        "jev_input_tokens_total": null,
-        "jev_output_tokens_total": null,
-        "estimated_jev_cost_usd": null
+        "model_input_tokens_total": null,
+        "model_output_tokens_total": null,
+        "estimated_model_cost_usd": null
       }
     },
     "hard_rules_plus_jev": {
@@ -44,13 +44,13 @@
         "safe_agreement": 0.8,
         "incorrect_proposals_marked_eligible": 4,
         "legitimate_unnecessarily_blocked_or_escalated": 0,
-        "mean_gateway_latency_ms": 0.19,
-        "mean_gateway_latency_ms_when_jev_called": 0.2,
-        "mean_jev_latency_ms": 0.0,
+        "mean_gateway_latency_ms": 0.21,
+        "mean_gateway_latency_ms_when_model_called": 0.21,
+        "mean_model_latency_ms": 0.0,
         "api_errors": 0,
-        "jev_input_tokens_total": null,
-        "jev_output_tokens_total": null,
-        "estimated_jev_cost_usd": null
+        "model_input_tokens_total": null,
+        "model_output_tokens_total": null,
+        "estimated_model_cost_usd": null
       },
       "holdout": {
         "split": "holdout",
@@ -59,13 +59,13 @@
         "safe_agreement": 0.95,
         "incorrect_proposals_marked_eligible": 1,
         "legitimate_unnecessarily_blocked_or_escalated": 0,
-        "mean_gateway_latency_ms": 0.2,
-        "mean_gateway_latency_ms_when_jev_called": 0.2,
-        "mean_jev_latency_ms": 0.0,
+        "mean_gateway_latency_ms": 0.22,
+        "mean_gateway_latency_ms_when_model_called": 0.22,
+        "mean_model_latency_ms": 0.0,
         "api_errors": 0,
-        "jev_input_tokens_total": null,
-        "jev_output_tokens_total": null,
-        "estimated_jev_cost_usd": null
+        "model_input_tokens_total": null,
+        "model_output_tokens_total": null,
+        "estimated_model_cost_usd": null
       }
     }
   },
@@ -86,10 +86,10 @@
         "reason_codes": [
           "APPROVAL_REQUIRED"
         ],
-        "gateway_latency_ms": 0.1862499993876554,
-        "jev_latency_ms": null,
-        "jev_input_tokens": null,
-        "jev_output_tokens": null,
+        "gateway_latency_ms": 0.19837499712593853,
+        "model_latency_ms": null,
+        "model_input_tokens": null,
+        "model_output_tokens": null,
         "error": null,
         "strict_match": false,
         "safe_match": false
@@ -109,10 +109,10 @@
         "reason_codes": [
           "APPROVAL_REQUIRED"
         ],
-        "gateway_latency_ms": 0.18716599879553542,
-        "jev_latency_ms": null,
-        "jev_input_tokens": null,
-        "jev_output_tokens": null,
+        "gateway_latency_ms": 0.20679199951700866,
+        "model_latency_ms": null,
+        "model_input_tokens": null,
+        "model_output_tokens": null,
         "error": null,
         "strict_match": false,
         "safe_match": false
@@ -132,10 +132,10 @@
         "reason_codes": [
           "APPROVAL_REQUIRED"
         ],
-        "gateway_latency_ms": 0.18529199587646872,
-        "jev_latency_ms": null,
-        "jev_input_tokens": null,
-        "jev_output_tokens": null,
+        "gateway_latency_ms": 0.20633300300687551,
+        "model_latency_ms": null,
+        "model_input_tokens": null,
+        "model_output_tokens": null,
         "error": null,
         "strict_match": false,
         "safe_match": false
@@ -155,10 +155,10 @@
         "reason_codes": [
           "APPROVAL_REQUIRED"
         ],
-        "gateway_latency_ms": 0.18812499911291525,
-        "jev_latency_ms": null,
-        "jev_input_tokens": null,
-        "jev_output_tokens": null,
+        "gateway_latency_ms": 0.2022499975282699,
+        "model_latency_ms": null,
+        "model_input_tokens": null,
+        "model_output_tokens": null,
         "error": null,
         "strict_match": false,
         "safe_match": false
@@ -178,10 +178,10 @@
         "reason_codes": [
           "APPROVAL_REQUIRED"
         ],
-        "gateway_latency_ms": 0.185875003808178,
-        "jev_latency_ms": null,
-        "jev_input_tokens": null,
-        "jev_output_tokens": null,
+        "gateway_latency_ms": 0.18454200471751392,
+        "model_latency_ms": null,
+        "model_input_tokens": null,
+        "model_output_tokens": null,
         "error": null,
         "strict_match": false,
         "safe_match": false
@@ -201,10 +201,10 @@
         "reason_codes": [
           "APPROVAL_REQUIRED"
         ],
-        "gateway_latency_ms": 0.18925000040326267,
-        "jev_latency_ms": null,
-        "jev_input_tokens": null,
-        "jev_output_tokens": null,
+        "gateway_latency_ms": 0.20770900300703943,
+        "model_latency_ms": null,
+        "model_input_tokens": null,
+        "model_output_tokens": null,
         "error": null,
         "strict_match": false,
         "safe_match": false
@@ -224,10 +224,10 @@
         "reason_codes": [
           "APPROVAL_REQUIRED"
         ],
-        "gateway_latency_ms": 0.18083300528815016,
-        "jev_latency_ms": null,
-        "jev_input_tokens": null,
-        "jev_output_tokens": null,
+        "gateway_latency_ms": 0.19624999549705535,
+        "model_latency_ms": null,
+        "model_input_tokens": null,
+        "model_output_tokens": null,
         "error": null,
         "strict_match": false,
         "safe_match": false
@@ -247,10 +247,10 @@
         "reason_codes": [
           "APPROVAL_REQUIRED"
         ],
-        "gateway_latency_ms": 0.18591700063552707,
-        "jev_latency_ms": null,
-        "jev_input_tokens": null,
-        "jev_output_tokens": null,
+        "gateway_latency_ms": 0.20458299695746973,
+        "model_latency_ms": null,
+        "model_input_tokens": null,
+        "model_output_tokens": null,
         "error": null,
         "strict_match": false,
         "safe_match": false
@@ -272,10 +272,10 @@
         "reason_codes": [
           "SEMANTIC_UNCERTAIN"
         ],
-        "gateway_latency_ms": 0.19941700156778097,
-        "jev_latency_ms": 0.005750000127591193,
-        "jev_input_tokens": null,
-        "jev_output_tokens": null,
+        "gateway_latency_ms": 0.21404099970823154,
+        "model_latency_ms": 0.006249996658880264,
+        "model_input_tokens": null,
+        "model_output_tokens": null,
         "error": null,
         "strict_match": false,
         "safe_match": false
@@ -295,10 +295,10 @@
         "reason_codes": [
           "SEMANTIC_UNCERTAIN"
         ],
-        "gateway_latency_ms": 0.19908299873350188,
-        "jev_latency_ms": 0.009000003046821803,
-        "jev_input_tokens": null,
-        "jev_output_tokens": null,
+        "gateway_latency_ms": 0.2165830010198988,
+        "model_latency_ms": 0.009875002433545887,
+        "model_input_tokens": null,
+        "model_output_tokens": null,
         "error": null,
         "strict_match": false,
         "safe_match": false
@@ -318,10 +318,10 @@
         "reason_codes": [
           "SEMANTIC_UNCERTAIN"
         ],
-        "gateway_latency_ms": 0.19062499632127583,
-        "jev_latency_ms": 0.0076669966802001,
-        "jev_input_tokens": null,
-        "jev_output_tokens": null,
+        "gateway_latency_ms": 0.21137499425094575,
+        "model_latency_ms": 0.008791001164354384,
+        "model_input_tokens": null,
+        "model_output_tokens": null,
         "error": null,
         "strict_match": false,
         "safe_match": false
@@ -341,10 +341,10 @@
         "reason_codes": [
           "SEMANTIC_UNCERTAIN"
         ],
-        "gateway_latency_ms": 0.19304099987493828,
-        "jev_latency_ms": 0.0049579975893720984,
-        "jev_input_tokens": null,
-        "jev_output_tokens": null,
+        "gateway_latency_ms": 0.20933299674652517,
+        "model_latency_ms": 0.005207999492995441,
+        "model_input_tokens": null,
+        "model_output_tokens": null,
         "error": null,
         "strict_match": false,
         "safe_match": false
@@ -364,10 +364,10 @@
         "reason_codes": [
           "SEMANTIC_UNCERTAIN"
         ],
-        "gateway_latency_ms": 0.20183400192763656,
-        "jev_latency_ms": 0.0070829992182552814,
-        "jev_input_tokens": null,
-        "jev_output_tokens": null,
+        "gateway_latency_ms": 0.22045800142223015,
+        "model_latency_ms": 0.007708003977313638,
+        "model_input_tokens": null,
+        "model_output_tokens": null,
         "error": null,
         "strict_match": false,
         "safe_match": false
