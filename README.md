@@ -128,7 +128,7 @@ backend/
     jev/                         # base.py (adapter protocol), mock.py, real.py, groq.py — swappable
     policy.py                    # the ordered decision policy — pure function, fully unit-tested
   api/                         # FastAPI: session cookie + CSRF, the 5 endpoints
-  tests/                       # 39 pytest tests
+  tests/                       # 43 pytest tests
   benchmark/                   # dataset.jsonl (40 cases) + run_benchmark.py
 frontend/                      # Next.js app router, 3-panel minimalist UI — color is reserved for the decision states
 scripts/jev_smoke_test.py      # one-off real-API smoke test
@@ -195,7 +195,7 @@ real adapter:
 JEV_ADAPTER=mock   # default — zero API calls, deterministic keyword heuristics
 JEV_ADAPTER=real   # requires TYPESAFE_API_KEY
 ```
-All development and all 39 pytest tests run against the mock adapter by design. The only
+All development and all 43 pytest tests run against the mock adapter by design. The only
 real-API usage in this repo is `scripts/jev_smoke_test.py` (one call) and
 `benchmark/run_benchmark.py --adapter live` (the evaluation report below) — so iterating on
 the app never spends API calls it doesn't need to.
@@ -207,12 +207,13 @@ the app never spends API calls it doesn't need to.
 ```bash
 cd backend && source ../.venv/bin/activate && python -m pytest tests/ -q
 ```
-39 tests: hard-rule checks for all 4 tools (including malformed-input handling), all 8 demo
+43 tests: hard-rule checks for all 4 tools (including malformed-input handling), all 8 demo
 scenarios end-to-end against the mock adapter, an invariant test that a write can never reach
 `ALLOW` regardless of Jev's output, duplicate-execution idempotency, idempotency-key
 conflicts, approval expiry, state changing between evaluation and execution, the per-session
-rate limit on evaluation creation, and the CSRF double-submit check (including the
-old-session-without-a-CSRF-cookie-yet edge case).
+rate limit on evaluation creation, the CSRF double-submit check (including the
+old-session-without-a-CSRF-cookie-yet edge case), and the Groq adapter's response parsing
+(valid output, out-of-enum choice, malformed JSON, API error — all mocked, no network calls).
 
 ---
 
@@ -241,7 +242,7 @@ specifically or about the pattern of asking any capable model these three questi
 > sample this size, not a statistically established difference. Treat every percentage in
 > this section as "the direction we observed, once," not as a validated accuracy claim.
 
-### Results (live APIs, 2026-09-22)
+### Results (live APIs, 2026-09-21/22)
 
 | Config | Split | Safe agreement* | Incorrect proposals marked eligible | Legitimate unnecessarily blocked | Mean model latency | API errors |
 |---|---|---|---|---|---|---|
@@ -335,6 +336,10 @@ invent a new tool or a sixth order through the UI — only new combinations with
   `acceptable_decisions` (the safe-outcome allowance) was authored by the same person who
   wrote the policy — a bias risk worth naming rather than treating the labels as independent
   ground truth.
+- **Two models is evidence of generalization, not proof of it.** Jev and Groq showing the
+  same qualitative pattern rules out "this is just a Jev quirk," but it's still n=2 — a third
+  model behaving differently wouldn't be shocking, and this isn't a claim that semantic
+  checking works with *any* model.
 - **No live generative agent.** Proposed actions are predefined/user-edited, explicitly
   labeled "simulated agent proposals" in the UI.
 - **Real payment reconciliation is out of scope.** The idempotency/transaction guarantees
