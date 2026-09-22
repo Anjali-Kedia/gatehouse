@@ -44,6 +44,10 @@ export default function Home() {
   };
 
   useEffect(() => {
+    // setHistory runs after the await inside refreshHistory, not synchronously
+    // during this callback, so this isn't the cascading-render pattern the
+    // rule is guarding against — it's the standard fetch-on-mount shape.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshHistory();
   }, []);
 

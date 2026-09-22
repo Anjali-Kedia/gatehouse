@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from gatehouse.jev.base import JevResult
 from gatehouse.models import Decision
 from gatehouse.reason_codes import ReasonCode
-from gatehouse.tools import HardRuleResult, WRITE_TOOLS
+from gatehouse.tools import WRITE_TOOLS, HardRuleResult
 
 
 @dataclass(frozen=True)

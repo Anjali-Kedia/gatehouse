@@ -35,12 +35,12 @@ export function DecisionPanel({ evaluation, loading }: { evaluation: EvaluationD
     <section className="flex min-w-0 flex-col gap-5 bg-panel p-6">
       <header>
         <h2 className="text-base font-medium text-ink">Decision</h2>
-        <p className="mt-1 text-sm text-muted">Hard rules run first; Jev's semantic check only runs if they pass.</p>
+        <p className="mt-1 text-sm text-muted">Hard rules run first; Jev&apos;s semantic check only runs if they pass.</p>
       </header>
 
       {loading && <p className="text-sm text-muted">Evaluating…</p>}
 
-      {!loading && !evaluation && <p className="text-sm text-faint">Run a scenario to see Gatehouse's reasoning here.</p>}
+      {!loading && !evaluation && <p className="text-sm text-faint">Run a scenario to see Gatehouse&apos;s reasoning here.</p>}
 
       {!loading && evaluation && (
         <div className="flex flex-col gap-4">

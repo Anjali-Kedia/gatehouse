@@ -54,9 +54,7 @@ class MockJevAdapter:
         else:
             specific = ChoiceAnswer("sufficient", 0.9, {"sufficient": 0.9, "needs_clarification": 0.1})
 
-        if not is_write:
-            explicit = ChoiceAnswer("explicit", 0.9, {"explicit": 0.9, "information_only": 0.05, "unclear": 0.05})
-        elif explicit_hit and not info_only_hit:
+        if not is_write or (explicit_hit and not info_only_hit):
             explicit = ChoiceAnswer("explicit", 0.9, {"explicit": 0.9, "information_only": 0.05, "unclear": 0.05})
         elif info_only_write:
             explicit = ChoiceAnswer("information_only", 0.9, {"information_only": 0.9, "explicit": 0.05, "unclear": 0.05})

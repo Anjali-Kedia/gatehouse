@@ -52,7 +52,6 @@ def test_idempotency_key_reused_with_different_action_is_a_conflict(client):
     client.post(f"/evaluations/{first_evaluation['id']}/approve")
     first_exec = client.post(f"/evaluations/{first_evaluation['id']}/execute", json={})
     assert first_exec.status_code == 200
-    reused_key = first_exec.json()["id"]  # any stable string works; reuse this one on purpose
 
     second_evaluation = _propose_refund(client, amount_cents=2000)
     client.post(f"/evaluations/{second_evaluation['id']}/approve")

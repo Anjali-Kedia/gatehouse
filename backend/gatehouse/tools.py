@@ -4,11 +4,10 @@ from the database — proposed-action arguments are never trusted for
 ownership, balance, or shipment-state facts.
 """
 from dataclasses import dataclass, field
-from datetime import datetime
 
 from sqlmodel import Session
 
-from gatehouse.models import Execution, Order, RefundLedgerEntry, ShipmentState
+from gatehouse.models import Order, RefundLedgerEntry, ShipmentState
 from gatehouse.reason_codes import ReasonCode
 from gatehouse.sandbox import ACTING_CUSTOMER_ID, load_order
 

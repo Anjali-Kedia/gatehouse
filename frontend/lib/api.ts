@@ -23,7 +23,8 @@ export class GatehouseApiError extends Error {
 
 function readCookie(name: string): string | null {
   const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
+  const value = match?.[1];
+  return value !== undefined ? decodeURIComponent(value) : null;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

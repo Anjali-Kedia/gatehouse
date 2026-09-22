@@ -3,7 +3,12 @@ already verified against the live API in scripts/jev_smoke_test.py.
 """
 import time
 
-from typesafe_sdk import Choice, TypeSafeAPIResponseValidationError, TypeSafeClient, TypeSafeError
+from typesafe_sdk import (
+    Choice,
+    TypeSafeAPIResponseValidationError,
+    TypeSafeClient,
+    TypeSafeError,
+)
 
 from gatehouse.config import settings
 from gatehouse.jev.base import ChoiceAnswer, JevResult, JevUnavailable
