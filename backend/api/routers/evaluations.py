@@ -30,7 +30,7 @@ from api.schemas import (
     ExecuteRequest,
     ExecutionResponse,
 )
-from api.session import get_sandbox_session_id
+from api.session import get_sandbox_session_id, verify_csrf
 from gatehouse.config import settings
 from gatehouse.db import get_session
 from gatehouse.hashing import compute_action_hash
@@ -115,7 +115,7 @@ def _evaluation_response(evaluation: Evaluation) -> EvaluationResponse:
     )
 
 
-@router.post("", response_model=EvaluationResponse, status_code=201)
+@router.post("", response_model=EvaluationResponse, status_code=201, dependencies=[Depends(verify_csrf)])
 def create_evaluation(
     body: EvaluationCreateRequest,
     db: Session = Depends(get_session),
@@ -232,7 +232,7 @@ def get_evaluation(
     )
 
 
-@router.post("/{evaluation_id}/approve", response_model=ApprovalResponse)
+@router.post("/{evaluation_id}/approve", response_model=ApprovalResponse, dependencies=[Depends(verify_csrf)])
 def approve_evaluation(
     evaluation_id: str,
     db: Session = Depends(get_session),
@@ -260,7 +260,7 @@ def approve_evaluation(
     return _approval_response(approval)
 
 
-@router.post("/{evaluation_id}/execute", response_model=ExecutionResponse)
+@router.post("/{evaluation_id}/execute", response_model=ExecutionResponse, dependencies=[Depends(verify_csrf)])
 def execute_evaluation(
     evaluation_id: str,
     body: ExecuteRequest,

@@ -64,6 +64,21 @@ def client(test_engine):
         # Deliberately not `with TestClient(...)`: that runs the app's lifespan
         # (init_db against the *real* default engine), which we don't need —
         # test_engine already has its own tables.
-        yield TestClient(app)
+        test_client = TestClient(app)
+
+        # A real browser reads the CSRF cookie and echoes it as a header on
+        # every mutating request; a bare TestClient doesn't. Wrap `.post` so
+        # existing tests don't all need to know about that plumbing — this
+        # mirrors what lib/api.ts actually does, not a test-only shortcut.
+        original_post = test_client.post
+
+        def post_with_csrf(url, **kwargs):
+            csrf_token = test_client.cookies.get("gatehouse_csrf")
+            if csrf_token:
+                kwargs["headers"] = {**(kwargs.get("headers") or {}), "X-CSRF-Token": csrf_token}
+            return original_post(url, **kwargs)
+
+        test_client.post = post_with_csrf
+        yield test_client
     finally:
         app.dependency_overrides.clear()

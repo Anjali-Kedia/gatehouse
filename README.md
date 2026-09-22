@@ -184,13 +184,18 @@ Open **`http://localhost:3000`** — use `localhost`, not `127.0.0.1`, on both e
 session cookie is `SameSite=Lax`; the two hostnames count as different *sites* even on the
 same machine, and the cookie won't round-trip across them.
 
+The three mutating endpoints (`POST /evaluations`, `/approve`, `/execute`) are also protected
+by a double-submit CSRF token (`gatehouse_csrf` cookie + matching `X-CSRF-Token` header) and a
+per-session rate limit on evaluation creation — see `api/session.py` and
+`gatehouse/rate_limit.py`.
+
 Copy `.env.example` to `.env` at the repo root and set `TYPESAFE_API_KEY` to switch on the
 real adapter:
 ```
 JEV_ADAPTER=mock   # default — zero API calls, deterministic keyword heuristics
 JEV_ADAPTER=real   # requires TYPESAFE_API_KEY
 ```
-All development and all 33 pytest tests run against the mock adapter by design. The only
+All development and all 39 pytest tests run against the mock adapter by design. The only
 real-API usage in this repo is `scripts/jev_smoke_test.py` (one call) and
 `benchmark/run_benchmark.py --adapter live` (the evaluation report below) — so iterating on
 the app never spends API calls it doesn't need to.
@@ -202,11 +207,12 @@ the app never spends API calls it doesn't need to.
 ```bash
 cd backend && source ../.venv/bin/activate && python -m pytest tests/ -q
 ```
-34 tests: hard-rule checks for all 4 tools (including malformed-input handling), all 8 demo
+39 tests: hard-rule checks for all 4 tools (including malformed-input handling), all 8 demo
 scenarios end-to-end against the mock adapter, an invariant test that a write can never reach
 `ALLOW` regardless of Jev's output, duplicate-execution idempotency, idempotency-key
-conflicts, approval expiry, state changing between evaluation and execution, and the
-per-session rate limit on evaluation creation.
+conflicts, approval expiry, state changing between evaluation and execution, the per-session
+rate limit on evaluation creation, and the CSRF double-submit check (including the
+old-session-without-a-CSRF-cookie-yet edge case).
 
 ---
 

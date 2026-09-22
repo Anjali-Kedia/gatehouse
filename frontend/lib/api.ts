@@ -21,11 +21,23 @@ export class GatehouseApiError extends Error {
   }
 }
 
+function readCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const isMutating = init?.method && init.method !== "GET";
+  const csrfToken = isMutating ? readCookie("gatehouse_csrf") : null;
+
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
-    credentials: "include", // carries the gatehouse_session cookie
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    credentials: "include", // carries the gatehouse_session (and CSRF) cookies
+    headers: {
+      "Content-Type": "application/json",
+      ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
+      ...init?.headers,
+    },
   });
   if (!response.ok) {
     const body = (await response.json().catch(() => ({ detail: response.statusText }))) as ApiErrorBody;
