@@ -279,6 +279,15 @@ implementation to explain the overlap. That's the actual claim this benchmark su
 model answers them** — stronger than "Jev works," and the reason a second adapter was worth
 building before trusting the first result.
 
+Comparable accuracy here doesn't make the two adapters interchangeable, though. Gatehouse
+gates on *confidence*, not just the choice (`clarify_confidence`, `block_confidence` in
+`gatehouse/config.py`), and that threshold is only as meaningful as what confidence actually
+measures. Jev's comes from Choice's real answer distribution. Groq's is synthesized after the
+fact from one verbalized number — a reasonable adapter-layer approximation, not a computed
+property of the model's output. Similar accuracy on 40 cases says the *pattern* generalizes;
+it says nothing about whether Groq's confidence values would hold up as a gating signal at
+volumes where the threshold actually gets stress-tested.
+
 ### Published failures
 
 Full detail in `backend/benchmark/results/benchmark_live.json` and `_groq.json`.
