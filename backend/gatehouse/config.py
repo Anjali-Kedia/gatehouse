@@ -11,11 +11,18 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Jev adapter
-    jev_adapter: Literal["mock", "real"] = "mock"
+    # Semantic-check adapter. "groq" is a second, independent implementation of
+    # the same three-question contract (via Groq's fast open-weight-model API),
+    # used to test whether the pattern holds regardless of which model answers
+    # it — not a production option.
+    jev_adapter: Literal["mock", "real", "groq"] = "mock"
     typesafe_api_key: str | None = None
     jev_model: str = "jev-latest"
     jev_timeout_seconds: float = 8.0
+
+    groq_api_key: str | None = None
+    groq_model: str = "openai/gpt-oss-20b"
+    groq_timeout_seconds: float = 15.0
 
     # Decision policy thresholds (tuned on the benchmark dev split)
     clarify_confidence: float = 0.6
@@ -23,6 +30,10 @@ class Settings(BaseSettings):
 
     # Approval / execution
     approval_ttl_minutes: int = 15
+
+    # Evaluations per session per minute — closes the unbounded-cost vector on
+    # a public demo when JEV_ADAPTER is a real, billed model.
+    rate_limit_per_minute: int = 20
 
     # Sandbox: every visitor session plays this fixed customer persona
     acting_customer_id: str = "cust_001"

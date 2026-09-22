@@ -37,12 +37,19 @@ from gatehouse.hashing import compute_action_hash
 from gatehouse.jev import JevResult, JevUnavailable, get_jev_adapter
 from gatehouse.models import Approval, ApprovalStatus, Decision, Evaluation, Execution, ExecutionStatus
 from gatehouse.policy import evaluate_policy
+from gatehouse.rate_limit import RateLimiter
 from gatehouse.reason_codes import REASON_EXPLANATIONS, ReasonCode
 from gatehouse.sandbox import load_order, state_version
 from gatehouse.timeutil import as_utc, utcnow
 from gatehouse.tools import execute_change_delivery_address, execute_issue_refund, run_hard_rules
 
 router = APIRouter(prefix="/evaluations", tags=["evaluations"])
+
+# Per-session limit on evaluation creation — the only endpoint that can trigger
+# a real, billed Jev call. Protects against a runaway client racking up API
+# cost, not against a determined attacker (who can just clear cookies); see
+# gatehouse/rate_limit.py for what a real deployment would need instead.
+_evaluation_rate_limiter = RateLimiter(max_requests=settings.rate_limit_per_minute, window_seconds=60)
 
 
 def _reason_error(status_code: int, reason_codes: list[ReasonCode]) -> HTTPException:
@@ -114,6 +121,12 @@ def create_evaluation(
     db: Session = Depends(get_session),
     sandbox_session_id: str = Depends(get_sandbox_session_id),
 ) -> EvaluationResponse:
+    if not _evaluation_rate_limiter.check(sandbox_session_id):
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many evaluations — limit is {settings.rate_limit_per_minute} per minute. Try again shortly.",
+        )
+
     start = time.perf_counter()
     tool = body.proposed_action.tool
     arguments = body.proposed_action.arguments

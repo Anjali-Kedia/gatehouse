@@ -8,13 +8,17 @@ __all__ = ["ChoiceAnswer", "JevAdapter", "JevResult", "JevUnavailable", "get_jev
 
 @lru_cache(maxsize=1)
 def get_jev_adapter() -> JevAdapter:
-    """Single cached adapter instance for the process lifetime — real or mock is
-    chosen once from settings.jev_adapter, never mixed within a run.
+    """Single cached adapter instance for the process lifetime — chosen once
+    from settings.jev_adapter, never mixed within a run.
     """
     if settings.jev_adapter == "real":
         from gatehouse.jev.real import RealJevAdapter
 
         return RealJevAdapter()
+    if settings.jev_adapter == "groq":
+        from gatehouse.jev.groq import GroqAdapter
+
+        return GroqAdapter()
     from gatehouse.jev.mock import MockJevAdapter
 
     return MockJevAdapter()

@@ -32,9 +32,13 @@ from gatehouse.tools import WRITE_TOOLS, run_hard_rules
 DATASET_PATH = Path(__file__).parent / "dataset.jsonl"
 RESULTS_DIR = Path(__file__).parent / "results"
 SANDBOX_SESSION_ID = "benchmark"
-# See docs/jev_smoke_test_result.json and reference_jev_typesafe_api memory:
-# verified pricing as of 2026-09-21 — output tokens are free.
-JEV_PRICE_PER_MILLION_INPUT_TOKENS = 0.042
+
+# (input $/1M tokens, output $/1M tokens), verified against each provider's
+# published pricing. Jev's output tokens are free; Groq's (gpt-oss-20b) are not.
+PRICE_PER_MILLION_TOKENS = {
+    "live": (0.042, 0.0),
+    "groq": (0.075, 0.30),
+}
 
 
 @dataclass
@@ -51,6 +55,7 @@ class CaseResult:
     gateway_latency_ms: float
     jev_latency_ms: float | None
     jev_input_tokens: int | None
+    jev_output_tokens: int | None
     error: str | None
     strict_match: bool
     safe_match: bool
@@ -94,6 +99,7 @@ def run_case(db: Session, case: dict, *, use_jev: bool, adapter) -> CaseResult:
 
     jev_latency_ms = None
     jev_input_tokens = None
+    jev_output_tokens = None
     error = None
 
     if not use_jev:
@@ -112,6 +118,7 @@ def run_case(db: Session, case: dict, *, use_jev: bool, adapter) -> CaseResult:
                 jev_latency_ms = jev_result.latency_ms
                 if jev_result.usage:
                     jev_input_tokens = jev_result.usage.get("input_tokens")
+                    jev_output_tokens = jev_result.usage.get("output_tokens")
             except JevUnavailable as exc:
                 jev_error = exc.reason_code
                 error = str(exc)
@@ -140,13 +147,14 @@ def run_case(db: Session, case: dict, *, use_jev: bool, adapter) -> CaseResult:
         gateway_latency_ms=gateway_latency_ms,
         jev_latency_ms=jev_latency_ms,
         jev_input_tokens=jev_input_tokens,
+        jev_output_tokens=jev_output_tokens,
         error=error,
         strict_match=decision.value == case["expected_decision"],
         safe_match=decision.value in acceptable,
     )
 
 
-def summarize(results: list[CaseResult], split: str) -> dict:
+def summarize(results: list[CaseResult], split: str, adapter_name: str) -> dict:
     subset = [r for r in results if r.split == split]
     n = len(subset)
     # "Incorrect proposal marked eligible to proceed": the case needed a firm
@@ -170,7 +178,15 @@ def summarize(results: list[CaseResult], split: str) -> dict:
     # that's not a bug, it's averaging over a different, larger set.
     gateway_latencies_when_jev_called = [r.gateway_latency_ms for r in subset if r.jev_latency_ms is not None]
     input_tokens = [r.jev_input_tokens for r in subset if r.jev_input_tokens is not None]
-    total_tokens = sum(input_tokens) if input_tokens else None
+    output_tokens = [r.jev_output_tokens for r in subset if r.jev_output_tokens is not None]
+    total_input_tokens = sum(input_tokens) if input_tokens else None
+    total_output_tokens = sum(output_tokens) if output_tokens else None
+    price_in, price_out = PRICE_PER_MILLION_TOKENS.get(adapter_name, (0.0, 0.0))
+    estimated_cost = None
+    if total_input_tokens is not None:
+        estimated_cost = round(
+            (total_input_tokens / 1_000_000) * price_in + ((total_output_tokens or 0) / 1_000_000) * price_out, 6
+        )
     return {
         "split": split,
         "n": n,
@@ -184,16 +200,15 @@ def summarize(results: list[CaseResult], split: str) -> dict:
         ),
         "mean_jev_latency_ms": round(statistics.mean(jev_latencies), 1) if jev_latencies else None,
         "api_errors": sum(1 for r in subset if r.error is not None),
-        "jev_input_tokens_total": total_tokens,
-        "estimated_jev_cost_usd": (
-            round((total_tokens / 1_000_000) * JEV_PRICE_PER_MILLION_INPUT_TOKENS, 6) if total_tokens else None
-        ),
+        "jev_input_tokens_total": total_input_tokens,
+        "jev_output_tokens_total": total_output_tokens,
+        "estimated_jev_cost_usd": estimated_cost,
     }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--adapter", choices=["mock", "live"], default="mock")
+    parser.add_argument("--adapter", choices=["mock", "live", "groq"], default="mock")
     args = parser.parse_args()
 
     cases = load_dataset()
@@ -202,6 +217,10 @@ def main() -> None:
         from gatehouse.jev.real import RealJevAdapter
 
         adapter = RealJevAdapter()
+    elif args.adapter == "groq":
+        from gatehouse.jev.groq import GroqAdapter
+
+        adapter = GroqAdapter()
     else:
         adapter = MockJevAdapter()
 
@@ -216,12 +235,12 @@ def main() -> None:
         "block_confidence": settings.block_confidence,
         "configurations": {
             "hard_rules_only": {
-                "dev": summarize(rules_only_results, "dev"),
-                "holdout": summarize(rules_only_results, "holdout"),
+                "dev": summarize(rules_only_results, "dev", args.adapter),
+                "holdout": summarize(rules_only_results, "holdout", args.adapter),
             },
             "hard_rules_plus_jev": {
-                "dev": summarize(rules_plus_jev_results, "dev"),
-                "holdout": summarize(rules_plus_jev_results, "holdout"),
+                "dev": summarize(rules_plus_jev_results, "dev", args.adapter),
+                "holdout": summarize(rules_plus_jev_results, "holdout", args.adapter),
             },
         },
         "failures": {
