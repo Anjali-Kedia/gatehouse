@@ -31,20 +31,19 @@ the pattern, not a production safety system — see [Limitations](#limitations).
 [Running it](#running-it) ·
 [Tests](#tests) ·
 [Evaluation](#evaluation) ·
-[Extending to a new domain](#extending-gatehouse-to-a-new-domain) ·
+[Extending](#extending-gatehouse-to-a-new-domain) ·
 [Limitations](#limitations)
 
 ---
 
 ## The problem, precisely
 
-Classic backend authorization (RBAC, ownership checks) answers *"is this principal allowed
-to perform this operation on this resource?"* That's necessary but not sufficient for an
-agent acting on natural language: a user can be fully authorized for a refund — they own the
-order, it's eligible, the balance is fine — and still not have *consented* to one, because
-they only asked a question. Structural permission and expressed intent are two different
-axes, and an agent that only reasons about the first will occasionally execute in good faith
-what the user never actually asked for.
+Classic backend authorization answers *"is this principal allowed to perform this operation
+on this resource?"* — necessary, but not sufficient for an agent acting on natural language.
+A user can be fully authorized for a refund and still not have *consented* to one, because
+they only asked a question. Structural permission and expressed intent are different axes;
+an agent reasoning about only the first will occasionally act in good faith on what the user
+never actually asked for.
 
 Gatehouse treats these as three independent, layered checks:
 
@@ -56,12 +55,12 @@ Gatehouse treats these as three independent, layered checks:
 3. **Human approval** — mandatory for every write, regardless of how (1) and (2) resolved.
    Jev can route a request toward review faster or slower; it never grants execution rights.
 
-This pattern — deterministic policy gates plus a semantic check plus mandatory
-human-in-the-loop — is an active, contested space right now, not a novel invention. See
-[Portia AI](https://www.producthunt.com/products/portia-ai) and
-[HumanLayer](https://ycombinator.com/companies/humanlayer) for funded products building close
-variants, and [arXiv:2603.20953](https://arxiv.org/pdf/2603.20953) for an academic framing of
-the same problem. What's here is a focused, *evaluated* implementation of that pattern.
+This pattern — deterministic gates plus a semantic check plus mandatory human-in-the-loop —
+is an active, contested space right now, not a novel invention: see
+[Portia AI](https://www.producthunt.com/products/portia-ai),
+[HumanLayer](https://ycombinator.com/companies/humanlayer), and
+[arXiv:2603.20953](https://arxiv.org/pdf/2603.20953). What's here is a focused, *evaluated*
+implementation of that pattern.
 
 ---
 
@@ -125,10 +124,11 @@ backend/
     tools.py                     # the 4 tools + their hard-rule checks — the only domain-specific file
     reason_codes.py              # fixed reason-code enum + explanations (Jev never writes prose)
     hashing.py, timeutil.py      # action-hash + UTC-safe datetime helpers
-    jev/                         # base.py (adapter protocol), mock.py, real.py — swappable
+    rate_limit.py                 # in-memory per-session rate limiter
+    jev/                         # base.py (adapter protocol), mock.py, real.py, groq.py — swappable
     policy.py                    # the ordered decision policy — pure function, fully unit-tested
-  api/                         # FastAPI: session cookie, the 5 endpoints
-  tests/                       # 33 pytest tests
+  api/                         # FastAPI: session cookie + CSRF, the 5 endpoints
+  tests/                       # 39 pytest tests
   benchmark/                   # dataset.jsonl (40 cases) + run_benchmark.py
 frontend/                      # Next.js app router, 3-panel minimalist UI — color is reserved for the decision states
 scripts/jev_smoke_test.py      # one-off real-API smoke test
@@ -257,60 +257,46 @@ both `BLOCK` and `CLARIFY` count as "caught" for an ambiguous-intent case). Stri
 agreement is lower across the board because it doesn't credit a `CLARIFY` for a case labeled
 `BLOCK` even though both are safe — see the full JSON reports for exact figures.
 
-Total cost across both live runs (120 evaluations): **Jev ≈ $0.00093** (22,127 input tokens,
-output free) **+ Groq ≈ $0.00331** (13,333 input / 7,693 output tokens) **≈ $0.0042 total.**
-Two independent models, on two different pricing models, both landing at a fraction of a cent
-for the full evaluation.
+Total cost across both live runs (120 evaluations): **Jev ≈ $0.00093, Groq ≈ $0.00331 — about
+$0.0042 total.** Two independent models, two different pricing models, both a fraction of a
+cent for the full evaluation.
 
-**The number that matters most, and it holds across every configuration including hard rules
+**The number that matters most, and it holds in every configuration including hard rules
 alone:** the worst automated outcome was ever `REVIEW` — never `ALLOW`. No incorrect proposal
-ever became executable without a human, in any of the three configurations. That's a
-structural guarantee, not a statistical one — a write can only leave `REVIEW` via an explicit
-approval tied to the exact action hash (see
+ever became executable without a human. That's a structural guarantee, not a statistical
+one — a write can only leave `REVIEW` via an approval tied to the exact action hash (see
 `test_writes_can_never_reach_allow_regardless_of_jev_output` in `tests/test_policy.py`).
 
-**What a semantic check concretely added, and why using two models matters:** Jev fixed both
-adversarial holdout cases (a status-only request where the proposed action was a
-refund/address-change instead — simulating a compromised or confused agent) that hard rules
-alone completely missed, plus 3 of 5 dev-split intent mismatches. Groq — a different vendor,
-a different model architecture, and a different confidence mechanism entirely (verbalized
-confidence via tool-calling, not Jev's native probability-distribution primitive) — improved
-over hard-rules-alone by a similar margin on both splits, without a shared implementation to
-explain the overlap. That's the actual claim this benchmark supports: **the pattern of asking
-a capable model these three narrow questions helps, independent of which model answers them**
-— a materially stronger claim than "Jev works," and the reason a second adapter was worth
+**What a semantic check added, and why two models matters:** Jev fixed both adversarial
+holdout cases (a status-only request where the proposed action was a refund/address-change
+instead — a compromised or confused agent) that hard rules alone missed entirely, plus 3 of 5
+dev-split intent mismatches. Groq — different vendor, different architecture, a different
+confidence mechanism (verbalized via tool-calling, not Jev's native probability-distribution
+primitive) — improved over hard-rules-alone by a similar margin on both splits, with no shared
+implementation to explain the overlap. That's the actual claim this benchmark supports:
+**the pattern of asking a capable model these three questions helps, independent of which
+model answers them** — stronger than "Jev works," and the reason a second adapter was worth
 building before trusting the first result.
 
 ### Published failures
 
-Full detail in `backend/benchmark/results/benchmark_live.json` and
-`backend/benchmark/results/benchmark_groq.json`; summarized here.
+Full detail in `backend/benchmark/results/benchmark_live.json` and `_groq.json`.
 
-**Hard rules only missed 8/40** — every one an intent-mismatch case where a write was
-proposed for a request that was only asking a question. All 8 landed on `REVIEW`
-(`APPROVAL_REQUIRED`), never `ALLOW` — expected, since hard rules have no way to read intent.
-
-**Hard rules + Jev missed 3/40**, all on the dev split — `mismatch-001`, `mismatch-002`,
-`mismatch-005`. All three resolved to `REVIEW` with reason `SEMANTIC_UNCERTAIN`: Jev wasn't
-confident enough in either direction to commit to a `BLOCK`, so the policy correctly
-escalated to a human rather than guess. An honest "I don't know," not a wrong confident
-answer — but still a genuine miss against the strict label, published rather than tuned away.
-
-**Hard rules + Groq missed 2/40, and one of the two is an infrastructure failure worth being
-precise about**, not a judgment error: on `mismatch-004`, Groq's model returned a tool call
-with malformed JSON (a real, observed generation failure — the API itself rejected it with
-`tool_use_failed`). The adapter caught this as `JevUnavailable` and the policy correctly fell
-back to `REVIEW` rather than crashing or guessing — the failure path worked exactly as
-designed, even though it still counts against the strict "safe agreement" number for that
-case. The second miss, `adversarial-010` on the holdout split, resolved to `REVIEW` with
-`SEMANTIC_UNCERTAIN` — the same honest "not confident enough" outcome as Jev's misses.
-
-**A related, previously observed quirk:** during manual testing, the identical
-eligibility-vs-refund phrasing produced Jev "specific" confidence of 0.53 in one call and
-0.71 in another — straddling the 0.6 `clarify_confidence` threshold, landing on `REVIEW` vs
-`CLARIFY` across otherwise-identical requests. Both outcomes are fail-safe, but it's a real
-reminder that a model's confidence has run-to-run variance and isn't a fixed measurement —
-true of both models tested here, not a Jev-specific quirk.
+- **Hard rules only, 8/40 missed** — every one an intent-mismatch write proposed for a
+  question. All landed on `REVIEW`, never `ALLOW` — expected, since hard rules can't read intent.
+- **Jev, 3/40 missed** (`mismatch-001/002/005`, dev split) — all resolved to `REVIEW` /
+  `SEMANTIC_UNCERTAIN`: not confident enough to commit to `BLOCK`, so it escalated rather than
+  guessed. An honest "I don't know," still a genuine miss against the strict label.
+- **Groq, 2/40 missed** — one is an infrastructure failure, not a judgment error:
+  `mismatch-004` got a malformed tool-call JSON from the model (a real generation failure, API
+  rejected it as `tool_use_failed`); the adapter caught it as `JevUnavailable` and correctly
+  fell back to `REVIEW` instead of crashing — exactly the designed failure path, even though it
+  still counts against the strict score. The other, `adversarial-010`, is the same honest
+  `SEMANTIC_UNCERTAIN` outcome as Jev's misses.
+- **A related quirk from manual testing:** the identical eligibility-vs-refund phrasing
+  produced Jev "specific" confidence of 0.53 in one call and 0.71 in another — straddling the
+  0.6 threshold, landing on `REVIEW` vs `CLARIFY` for otherwise-identical requests. Both are
+  fail-safe, but it's a real reminder that confidence has run-to-run variance, for both models.
 
 ---
 
@@ -331,17 +317,10 @@ That's also the honest limit of what's built today: only one domain is implement
 claim is architectural (the code doesn't reference refunds outside `tools.py`/`sandbox.py`),
 not yet demonstrated with a second one.
 
----
-
-## Can visitors test their own cases, or only the 8 presets?
-
-Both. The 8 scenarios are starting points, not a fixed menu — the UI's "User request" and
-"Arguments (JSON)" fields are freely editable, and every submission is evaluated live against
-the real policy (and real Jev, if `JEV_ADAPTER=real`), not looked up from a canned table. What
-*is* fixed is the sandbox itself: the 4 tools and 5 seed orders are hardcoded, so you can't
-invent a new tool or a sixth order through the UI — only combinations within that domain. That
-boundary is what [Extending Gatehouse to a new domain](#extending-gatehouse-to-a-new-domain)
-above is for.
+**Can visitors test their own cases, or only the 8 presets?** Both — the "User request" and
+"Arguments (JSON)" fields are freely editable, and every submission is evaluated live, not
+looked up from a canned table. The 4 tools and 5 seed orders are hardcoded, so you can't
+invent a new tool or a sixth order through the UI — only new combinations within that domain.
 
 ---
 
